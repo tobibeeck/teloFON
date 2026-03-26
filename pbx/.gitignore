@@ -1,0 +1,7 @@
+.env
+certs/*.pem
+certs/*.key
+# enthält Passwörter zur Laufzeit
+freeswitch/conf/vars.xml
+node_modules/
+dist/

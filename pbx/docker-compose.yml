@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./certs:/certs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - pbx-net
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./certs:/certs:ro
+    env_file: .env
+
+  freeswitch:
+    image: freeswitch/freeswitch:latest
+    container_name: freeswitch
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./freeswitch/conf:/etc/freeswitch:rw
+      - ./freeswitch/scripts:/usr/share/freeswitch/scripts:ro
+    environment:
+      - DEFAULT_PASSWORD=${FS_DEFAULT_PASSWORD}
+    env_file: .env
+
+  api:
+    build: ./api
+    container_name: pbx-api
+    restart: unless-stopped
+    depends_on:
+      - supabase-db
+      - redis
+    env_file: .env
+    networks:
+      - pbx-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.${FQDN}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+
+  config-gen:
+    build: ./config-gen
+    container_name: config-gen
+    restart: unless-stopped
+    depends_on:
+      - supabase-db
+    volumes:
+      - ./freeswitch/conf:/etc/freeswitch:rw
+    env_file: .env
+    networks:
+      - pbx-net
+
+  provisioning:
+    build: ./provisioning
+    container_name: provisioning
+    restart: unless-stopped
+    depends_on:
+      - supabase-db
+    env_file: .env
+    networks:
+      - pbx-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.provisioning.rule=Host(`${FQDN}`) && PathPrefix(`/provisioning`)"
+      - "traefik.http.routers.provisioning.entrypoints=websecure"
+      - "traefik.http.routers.provisioning.tls=true"
+
+  admin-ui:
+    build: ./admin-ui
+    container_name: admin-ui
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - pbx-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`${FQDN}`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.admin.entrypoints=websecure"
+      - "traefik.http.routers.admin.tls=true"
+
+  webclient:
+    build: ./webclient
+    container_name: webclient
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - pbx-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phone.rule=Host(`${FQDN}`) && PathPrefix(`/phone`)"
+      - "traefik.http.routers.phone.entrypoints=websecure"
+      - "traefik.http.routers.phone.tls=true"
+
+  supabase-db:
+    image: supabase/postgres:15
+    container_name: pbx-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    env_file: .env
+    networks:
+      - pbx-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - pbx-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./data/minio:/data
+    env_file: .env
+    networks:
+      - pbx-net
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    volumes:
+      - ./data/loki:/loki
+    networks:
+      - pbx-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - loki
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+    env_file: .env
+    networks:
+      - pbx-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`${FQDN}`) && PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+
+networks:
+  pbx-net:
+    driver: bridge
