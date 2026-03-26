@@ -1,0 +1,7 @@
+# Coturn Template
+listening-port=3478
+tls-listening-port=5349
+realm=${FQDN}
+external-ip=${PUBLIC_IP}
+static-auth-secret=${TURN_SECRET}
+# To be expanded
