@@ -36,6 +36,10 @@ services:
     environment:
       - DEFAULT_PASSWORD=${FS_DEFAULT_PASSWORD}
     env_file: .env
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
 
   api:
     build: ./api
@@ -44,6 +48,8 @@ services:
     depends_on:
       - supabase-db
       - redis
+    environment:
+      - LOKI_URL=http://loki:3100
     env_file: .env
     networks:
       - pbx-net
@@ -52,6 +58,10 @@ services:
       - "traefik.http.routers.api.rule=Host(`api.${FQDN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls=true"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
 
   config-gen:
     build: ./config-gen
@@ -64,6 +74,10 @@ services:
     env_file: .env
     networks:
       - pbx-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
 
   provisioning:
     build: ./provisioning
@@ -79,6 +93,10 @@ services:
       - "traefik.http.routers.provisioning.rule=Host(`${FQDN}`) && PathPrefix(`/provisioning`)"
       - "traefik.http.routers.provisioning.entrypoints=websecure"
       - "traefik.http.routers.provisioning.tls=true"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
 
   admin-ui:
     build: ./admin-ui
@@ -92,6 +110,10 @@ services:
       - "traefik.http.routers.admin.rule=Host(`${FQDN}`) && PathPrefix(`/admin`)"
       - "traefik.http.routers.admin.entrypoints=websecure"
       - "traefik.http.routers.admin.tls=true"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
 
   webclient:
     build: ./webclient
@@ -105,6 +127,10 @@ services:
       - "traefik.http.routers.phone.rule=Host(`${FQDN}`) && PathPrefix(`/phone`)"
       - "traefik.http.routers.phone.entrypoints=websecure"
       - "traefik.http.routers.phone.tls=true"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
 
   supabase-db:
     image: supabase/postgres:15
@@ -149,23 +175,6 @@ services:
       - ./data/loki:/loki
     networks:
       - pbx-net
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    depends_on:
-      - loki
-    volumes:
-      - ./data/grafana:/var/lib/grafana
-    env_file: .env
-    networks:
-      - pbx-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`${FQDN}`) && PathPrefix(`/grafana`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls=true"
 
 networks:
   pbx-net:
