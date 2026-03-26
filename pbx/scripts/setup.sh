@@ -12,7 +12,7 @@ echo -e "${GREEN}   PBX Setup Wizard                      ${NC}"
 echo -e "${GREEN}=========================================${NC}"
 
 # 1. Prerequisites
-echo -e "\n[1/7] Checking Prerequisites..."
+echo -e "\n[1/8] Checking Prerequisites..."
 
 if [[ $EUID -ne 0 ]]; then
    echo -e "${RED}Error: This script must be run as root${NC}"
@@ -40,8 +40,22 @@ if [[ -f ".env" ]]; then
     exit 1
 fi
 
-# 2. FQDN and Networking
-echo -e "\n[2/7] Networking Configuration..."
+# 2. Loki Logging Plugin
+echo -e "\n[2/8] Checking Loki Logging Plugin..."
+if docker plugin ls | grep -q "loki"; then
+    echo -e "${GREEN}Loki Docker driver is already installed.${NC}"
+else
+    echo -e "Installing Loki Docker driver..."
+    if docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions; then
+        echo -e "${GREEN}Loki Docker driver installed successfully.${NC}"
+    else
+        echo -e "${RED}Error: Failed to install Loki Docker driver. Logging will not work.${NC}"
+        exit 1
+    fi
+fi
+
+# 3. FQDN and Networking
+echo -e "\n[3/8] Networking Configuration..."
 read -p "Enter FQDN (e.g. pbx.firma.at): " FQDN
 
 PUBLIC_IP=$(curl -s ifconfig.me)
@@ -59,8 +73,8 @@ else
     echo -e "${GREEN}DNS Check OK.${NC}"
 fi
 
-# 3. Admin Web Password
-echo -e "\n[3/7] Admin UI Security..."
+# 4. Admin Web Password
+echo -e "\n[4/8] Admin UI Security..."
 
 while true; do
     read -rs -p "Enter Admin Web Password: " PASS1
@@ -83,8 +97,8 @@ done
 
 ADMIN_PASSWORD_HASH=$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'$PASS1', bcrypt.gensalt()).decode())")
 
-# 4. Secret Generation
-echo -e "\n[4/7] Generating Secrets..."
+# 5. Secret Generation
+echo -e "\n[5/8] Generating Secrets..."
 
 gen_secret() {
     openssl rand -base64 48 | tr -d '=/+' | cut -c1-"$1"
@@ -120,8 +134,8 @@ else
     SUPABASE_SERVICE_ROLE_KEY="placeholder_service_role_key_requires_python_jwt"
 fi
 
-# 5. Writing .env
-echo -e "\n[5/7] Creating .env..."
+# 6. Writing .env
+echo -e "\n[6/8] Creating .env..."
 
 cat > .env <<EOF
 FQDN=$FQDN
@@ -139,8 +153,8 @@ SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 EOF
 
-# 6. Configuration Generation
-echo -e "\n[6/7] Processing Templates..."
+# 7. Configuration Generation
+echo -e "\n[7/8] Processing Templates..."
 
 export FQDN PUBLIC_IP FS_DEFAULT_PASSWORD
 if [[ -f "freeswitch/conf/vars.xml.template" ]]; then
@@ -153,8 +167,8 @@ if [[ -f "coturn/turnserver.conf.template" ]]; then
     echo -e "Generated coturn/turnserver.conf"
 fi
 
-# 7. Docker Startup
-echo -e "\n[7/7] Starting Services..."
+# 8. Docker Startup
+echo -e "\n[8/8] Starting Services..."
 
 docker compose up -d
 
