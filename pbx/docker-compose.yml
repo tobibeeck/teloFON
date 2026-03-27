@@ -173,6 +173,7 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: loki
+    user: "0"
     restart: unless-stopped
     volumes:
       - ./data/loki:/loki

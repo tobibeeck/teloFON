@@ -14,4 +14,4 @@ entryPoints:
   web:
     address: ":80"
   websecure:
-    address: ":444"
+    address: ":443"

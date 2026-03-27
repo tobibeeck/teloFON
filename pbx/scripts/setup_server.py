@@ -75,6 +75,13 @@ def run_setup(data):
         postgres_db = "telofon"
         database_url = f"postgresql://{postgres_user}:{postgres_password}@postgres:5432/{postgres_db}"
 
+        # Loki directory permissions
+        log_progress("Initialisiere Log-Verzeichnisse...")
+        os.makedirs('./data/loki', exist_ok=True)
+        os.makedirs('./data/loki/rules', exist_ok=True)
+        os.chmod('./data/loki', 0o777)
+        os.chmod('./data/loki/rules', 0o777)
+
         log_progress(".env wird geschrieben...")
         env_content = f"""FQDN={fqdn}
 PUBLIC_IP={get_public_ip()}
