@@ -69,9 +69,17 @@
         }
 
         .header-logo {
-            width: 50px;
-            height: 50px;
+            width: 80px;
+            height: 80px;
             object-fit: contain;
+        }
+
+        .main-logo {
+            width: 220px;
+            height: auto;
+            margin-top: 20px;
+            margin-bottom: -40px;
+            z-index: 5;
         }
 
         .step-indicator {
@@ -430,10 +438,11 @@
         <div class="step-indicator" id="stepIndicator">Schritt 1 von 5</div>
     </header>
 
+    <img src="assets/brand/teloFON_Logo.svg" alt="teloFON" class="main-logo">
+
     <main>
         <!-- Step 1: Welcome -->
         <div class="step active" id="step1">
-            <img src="assets/brand/teloFON_Logo.svg" alt="teloFON" class="step-icon-center">
             <h1 style="text-align: center;">Setup Wizard</h1>
             <p style="text-align: center;">Willkommen bei teloFON.<br>Wir richten nun deine PBX Anlage ein.<br>Der
                 Vorgang dauert ca. 2 Minuten.</p>
@@ -540,18 +549,10 @@
                     <span style="color: var(--color-text-secondary);">Admin Interface:</span>
                     <span class="info-val" id="resUrl">https://...</span>
                 </div>
-                <div class="info-row">
-                    <span style="color: var(--color-text-secondary);">SIP Passwort (000):</span>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="info-val" id="sipPass" style="filter: blur(4px);">••••••••</span>
-                        <button class="btn-icon" id="toggleSip">👁️</button>
-                        <button class="btn-icon" id="copySip">📋</button>
-                    </div>
-                </div>
             </div>
             <div class="status-msg msg-info">
                 <div class="status-dot"></div>
-                Bitte bewahre das SIP Passwort sicher auf. Es wird nur einmalig angezeigt.
+                Die Anlage ist nun bereit. Du kannst dich mit deinen Admin-Zugangsdaten einloggen.
             </div>
             <div style="display: flex; justify-content: center; margin-top: 1rem;">
                 <button class="btn-primary" onclick="goToAdmin()">Zum Login</button>
@@ -620,7 +621,7 @@
             btn2.disabled = true;
 
             if (state.fqdn.length < 4 || !validateEmail(state.email)) return;
-            
+
             clearTimeout(dnsTimeout);
             dnsTimeout = setTimeout(checkDNS, 800);
         }
@@ -690,10 +691,10 @@
             fetch('/api/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    fqdn: state.fqdn, 
+                body: JSON.stringify({
+                    fqdn: state.fqdn,
                     acme_email: state.email,
-                    admin_password: state.pass 
+                    admin_password: state.pass
                 })
             });
 
@@ -720,24 +721,8 @@
 
         function finishSetup() {
             document.getElementById('resUrl').innerText = `https://${state.fqdn}/admin`;
-            document.getElementById('sipPass').innerText = state.sipPass;
             nextStep(5);
         }
-
-        // Interactions
-        document.getElementById('toggleSip').onclick = e => {
-            const el = document.getElementById('sipPass');
-            const obscured = el.style.filter === 'blur(4px)';
-            el.style.filter = obscured ? 'none' : 'blur(4px)';
-            e.currentTarget.innerText = obscured ? '🔒' : '👁️';
-        };
-
-        document.getElementById('copySip').onclick = e => {
-            navigator.clipboard.writeText(state.sipPass);
-            const original = e.currentTarget.innerText;
-            e.currentTarget.innerText = '✅';
-            setTimeout(() => e.currentTarget.innerText = original, 1000);
-        };
 
         function goToAdmin() {
             window.location.href = `https://${state.fqdn}/admin`;

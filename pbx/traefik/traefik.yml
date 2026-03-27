@@ -5,7 +5,7 @@ api:
 providers:
   docker:
     exposedByDefault: false
-    network: pbx-net
+    network: pbx_pbx-net
   file:
     directory: /etc/traefik/dynamic
     watch: true
