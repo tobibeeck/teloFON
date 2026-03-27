@@ -51,6 +51,7 @@ def run_setup(data):
     global setup_finished
     try:
         fqdn = data.get("fqdn")
+        acme_email = data.get("acme_email")
         admin_password = data.get("admin_password")
         
         log_progress("Secrets werden generiert...")
@@ -82,9 +83,19 @@ def run_setup(data):
         os.chmod('./data/loki', 0o777)
         os.chmod('./data/loki/rules', 0o777)
 
+        # Let's Encrypt setup
+        log_progress("Bereite SSL Zertifikate vor...")
+        os.makedirs('./certs', exist_ok=True)
+        acme_path = './certs/acme.json'
+        if not os.path.exists(acme_path):
+            with open(acme_path, 'w') as f:
+                f.write('{}')
+        os.chmod(acme_path, 0o600)
+
         log_progress(".env wird geschrieben...")
         env_content = f"""FQDN={fqdn}
 PUBLIC_IP={get_public_ip()}
+ACME_EMAIL={acme_email}
 POSTGRES_DB={postgres_db}
 POSTGRES_USER={postgres_user}
 POSTGRES_PASSWORD={postgres_password}
@@ -95,7 +106,7 @@ FS_DEFAULT_PASSWORD={fs_default_password}
 TURN_SECRET={turn_secret}
 MINIO_ROOT_USER=pbxadmin
 MINIO_ROOT_PASSWORD={minio_root_password}
-ADMIN_PASSWORD_HASH={admin_password_hash}
+ADMIN_PASSWORD_HASH={admin_password_hash.replace('$', '$$')}
 ADMIN_SIP_PASSWORD={admin_sip_password}
 """
         with open(ENV_FILE, "w") as f:

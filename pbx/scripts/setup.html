@@ -435,8 +435,8 @@
         <div class="step active" id="step1">
             <img src="assets/brand/teloFON_Logo.svg" alt="teloFON" class="step-icon-center">
             <h1 style="text-align: center;">Setup Wizard</h1>
-            <p style="text-align: center;">Willkommen bei teloFON. <br>Wir richten nun deine PBX Anlage ein. Der Vorgang
-                dauert ca. 2 Minuten.</p>
+            <p style="text-align: center;">Willkommen bei teloFON.<br>Wir richten nun deine PBX Anlage ein.<br>Der
+                Vorgang dauert ca. 2 Minuten.</p>
             <div class="welcome-list">
                 <div class="list-item">
                     <div class="dot-primary"></div>SSL Zertifikat wird automatisch erstellt
@@ -463,6 +463,8 @@
             <div class="input-group">
                 <div class="input-label">FQDN</div>
                 <input type="text" id="fqdnInput" placeholder="pbx.firma.at" spellcheck="false">
+                <div class="input-label" style="margin-top: 8px;">Let's Encrypt E-Mail</div>
+                <input type="email" id="emailInput" placeholder="admin@firma.at" spellcheck="false">
                 <div id="dnsStatusContainer"></div>
             </div>
             <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
@@ -561,6 +563,7 @@
         let currentStep = 1;
         const state = {
             fqdn: '',
+            email: '',
             pass: '',
             sipPass: ''
         };
@@ -599,13 +602,28 @@
 
         fqdnInput.addEventListener('input', e => {
             state.fqdn = e.target.value.trim().toLowerCase();
+            validateStep2();
+        });
+
+        const emailInput = document.getElementById('emailInput');
+        emailInput.addEventListener('input', e => {
+            state.email = e.target.value.trim().toLowerCase();
+            validateStep2();
+        });
+
+        function validateEmail(email) {
+            return email.length > 5 && email.includes('@') && email.includes('.');
+        }
+
+        function validateStep2() {
             dnsStatus.innerHTML = '';
             btn2.disabled = true;
 
-            if (state.fqdn.length < 4) return;
+            if (state.fqdn.length < 4 || !validateEmail(state.email)) return;
+            
             clearTimeout(dnsTimeout);
             dnsTimeout = setTimeout(checkDNS, 800);
-        });
+        }
 
         async function checkDNS() {
             dnsStatus.innerHTML = '<div class="status-msg msg-info"><div class="spinner" style="width:14px; height:14px; border-width:2px;"></div>Prüfe DNS Auflösung...</div>';
@@ -672,7 +690,11 @@
             fetch('/api/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fqdn: state.fqdn, admin_password: state.pass })
+                body: JSON.stringify({ 
+                    fqdn: state.fqdn, 
+                    acme_email: state.email,
+                    admin_password: state.pass 
+                })
             });
 
             const ev = new EventSource('/api/setup-progress');
